@@ -109,10 +109,9 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 
 	cmd.Run("PkgBuild","apt-get","update")
 	cmd.Run("PkgBuild","apt-get","-y","install","dpkg-dev","debhelper")
-	cmd.Run("PkgBuild","apt-get","build-dep","stress")
-	// XXX: noautodbgsym does not work... why!?
-	cmd.Run("PkgBuild","export","DEB_BUILD_OPTIONS=noautodbgsym")
-	cmd.Run("PkgBuild","apt-get","source","stress")
+	cmd.Run("PkgBuild","apt-get","build-dep",pb.Package)
+	cmd.AddEnv("DEB_BUILD_OPTIONS=noautodbgsym")
+	cmd.Run("PkgBuild","apt-get","source",pb.Package)
 	// TODO: apply patch here if required
 	var cmdline []string
 	if pb.Patch != "" {
