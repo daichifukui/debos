@@ -163,21 +163,23 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 		//cmd.Run("PkgBuild","dpkg","-l","stress")
 	} ()
 
+	defer func() {
+		var err error
+		fmt.Println("umounting overlayfs...")
+		err = syscall.Unmount(context.Rootdir,syscall.MNT_DETACH)
+		if err != nil {
+			fmt.Println("Couldn't Unmount: ", err)
+		} else {
+			fmt.Println("Unmount success")
+		}
+		fmt.Println("end of umounting overlayfs... log: ", err)
+	} ()
+
 	return err
 }
 
 func (pb *PackageBuildAction) Cleanup(context *debos.DebosContext) error {
 	var err error
-	var cmd debos.Command
-
-	cmd = debos.NewChrootCommandForContext(*context)
-
-	err = syscall.Unmount(context.Rootdir,0)
-	if err != nil {
-		return fmt.Errorf("Couldn't Unmount: %v", err)
-	}
-
-	cmd.Run("PkgBuild","ls","-l")
 
 	err = os.RemoveAll("/tmp/upper")
 	if err != nil {
