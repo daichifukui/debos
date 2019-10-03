@@ -47,13 +47,13 @@ import (
 type PackageBuildAction struct {
 	debos.BaseAction `yaml:",inline"`
 	Package		 string
-	version		 string
-	codename	 string
-	architecture	 string
-	patch		 string
-	installation	 string
-	install		 bool
-	sign_key	 string
+	Version		 string
+	Codename	 string
+	Architecture	 string
+	Patch		 string
+	Installation	 string
+	Install		 bool
+	Sign_key	 string
 }
 
 func Exists(name string) bool {
@@ -125,12 +125,25 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 	//(3) mount overlayfs over multiple directories suchas /root, /tmp, /var; build deb package under /root
 	//(4) mount ovarlayfs each of /tmp and /var; apt-get --compile under /root; umount overlayfs; dpkg -i; rm deb package under /root 
 	//TODO: mv *.dsc *.deb to change name
-	cmdline := []string{"dpkg -i *.deb"}
-	cmdline = append([]string{"sh","-c"}, cmdline...)
-	cmd.Run("PkgBuild", cmdline...)
-	cmd.Run("PkgBuild","apt-get","-f","install")
-	//cmd.Run("PkgBuild","apt","install","*.deb")
-	cmd.Run("PkgBuild","dpkg","-l","stress")
+	defer func() {
+		var cmdline []string
+		var cmd debos.Command
+
+		cmd = debos.NewChrootCommandForContext(*context)
+		cmdline = []string{"cp /tmp/upper/*.deb "+context.Rootdir}
+		cmdline = append([]string{"sh","-c"}, cmdline...)
+		debos.Command{}.Run("PkgBuild", cmdline...)
+		fmt.Println(cmdline)
+		cmdline = []string{"dpkg -i *.deb"}
+		cmdline = append([]string{"sh","-c"}, cmdline...)
+		cmd.Run("PkgBuild", cmdline...)
+		cmd.Run("PkgBuild","apt-get","-f","install")
+		cmdline = []string{"rm /*.deb "}
+		cmdline = append([]string{"sh","-c"}, cmdline...)
+		cmd.Run("PkgBuild", cmdline...)
+		//cmd.Run("PkgBuild","apt","install","*.deb")
+		//cmd.Run("PkgBuild","dpkg","-l","stress")
+	} ()
 
 	return err
 }
