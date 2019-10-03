@@ -114,9 +114,28 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 	cmd.Run("PkgBuild","export","DEB_BUILD_OPTIONS=noautodbgsym")
 	cmd.Run("PkgBuild","apt-get","source","stress")
 	// TODO: apply patch here if required
-	cmd.Run("PkgBuild","apt-get","--compile","source","stress")
-	cmd.Run("PkgBuild","ls","-l")
-	cmd.Run("PkgBuild","cat","/etc/apt/sources.list")
+	var cmdline []string
+	if pb.Patch != "" {
+		if ! Exists(pb.Patch) {
+			return fmt.Errorf("patch file not found: %s",pb.Patch)
+		}
+		cmdline = []string{"cp "+pb.Patch+" "+context.Rootdir}
+		cmdline = append([]string{"sh","-c"}, cmdline...)
+		debos.Command{}.Run("PkgBuild", cmdline...)
+		cmdline = []string{"patch -p0 < "+"/"+path.Base(pb.Patch)}
+		cmdline = append([]string{"sh","-c"}, cmdline...)
+		err = cmd.Run("PkgBuild", cmdline...)
+		if err != nil {
+			return fmt.Errorf("failed to apply patch: %s",pb.Patch)
+		}
+	}
+	cmd.Run("PkgBuild","apt-get","--compile","source",pb.Package)
+
+	fmt.Println("==DEBUG==")
+	fmt.Println(cmdline)
+	fmt.Println(err)
+	fmt.Println("patch file: "+pb.Patch)
+
 	//TODO: copy deb package to artifactdir BEFORE UMOUNT OVERLAYFS
 	//TODO: install the deb package AFTER UMOUNT OVERLAYFS
 	//TODO: two ways to do that
