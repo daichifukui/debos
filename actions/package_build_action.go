@@ -67,14 +67,12 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 	var err error
 	var cmd debos.Command
 
-	// XXX: dependent on host
 	if ! Exists("/tmp/upper") {
 		err = syscall.Mkdir("/tmp/upper",0644)
 		if err != nil {
 			return fmt.Errorf("Couldn't Mkdir: %v", err)
 		}
 	}
-	// XXX: dependent on host
 	if ! Exists("/tmp/work") {
 		err = syscall.Mkdir("/tmp/work",0644)
 		if err != nil {
@@ -95,7 +93,6 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 	}
 
 	cmd = debos.NewChrootCommandForContext(*context)
-	// HACK
 	srclist, err := os.OpenFile(path.Join(context.Rootdir, "etc/apt/sources.list"),
 		os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -112,7 +109,6 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 	cmd.Run("PkgBuild","apt-get","build-dep",pb.Package)
 	cmd.AddEnv("DEB_BUILD_OPTIONS=noautodbgsym")
 	cmd.Run("PkgBuild","apt-get","source",pb.Package)
-	// TODO: apply patch here if required
 	var cmdline []string
 	if pb.Patch != "" {
 		if ! Exists(pb.Patch) {
@@ -130,19 +126,6 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 	}
 	cmd.Run("PkgBuild","apt-get","--compile","source",pb.Package)
 
-	fmt.Println("==DEBUG==")
-	fmt.Println(cmdline)
-	fmt.Println(err)
-	fmt.Println("patch file: "+pb.Patch)
-
-	//TODO: copy deb package to artifactdir BEFORE UMOUNT OVERLAYFS
-	//TODO: install the deb package AFTER UMOUNT OVERLAYFS
-	//TODO: two ways to do that
-	//(1) mkdir /tmp/merged and mount overlayfs on it as lowerdir=chroot.dir => then chdir to /tmp/merged
-	//(2) mount overlayfs on chroot.dir and move deb package to artifactdir => umount ovalayfs => dpkg -i debpkg
-	//(3) mount overlayfs over multiple directories suchas /root, /tmp, /var; build deb package under /root
-	//(4) mount ovarlayfs each of /tmp and /var; apt-get --compile under /root; umount overlayfs; dpkg -i; rm deb package under /root 
-	//TODO: mv *.dsc *.deb to change name
 	defer func() {
 		var cmdline []string
 		var cmd debos.Command
@@ -159,8 +142,6 @@ func (pb *PackageBuildAction) Run(context *debos.DebosContext) error {
 		cmdline = []string{"rm /*.deb "}
 		cmdline = append([]string{"sh","-c"}, cmdline...)
 		cmd.Run("PkgBuild", cmdline...)
-		//cmd.Run("PkgBuild","apt","install","*.deb")
-		//cmd.Run("PkgBuild","dpkg","-l","stress")
 	} ()
 
 	defer func() {
